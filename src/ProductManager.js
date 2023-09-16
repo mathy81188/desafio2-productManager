@@ -1,15 +1,17 @@
-const fs = require("fs");
+import fs from "fs";
 
 class ProductManager {
   constructor(path) {
     this.path = path;
   }
 
-  async getProducts() {
+  async getProducts(queryObj) {
+    const { limit } = queryObj;
     try {
       if (fs.existsSync(this.path)) {
         const info = await fs.promises.readFile(this.path, "utf-8");
-        return JSON.parse(info);
+        const arrayObj = JSON.parse(info);
+        return limit ? arrayObj.slice(0, limit) : arrayObj;
       } else {
         return [];
       }
@@ -18,27 +20,39 @@ class ProductManager {
     }
   }
 
-  async addProduct(obj, title, description, price, thumbnail, code, stock) {
+  async addProduct(product) {
     try {
-      const product = await this.getProducts();
-      const checkItems =
-        title && description && price && code && thumbnail && stock;
-      if (!checkItems) {
-        console.log("Producto agregado");
-      } else {
-        console.log("Este producto ya existe");
+      const products = await this.getProducts({});
+      const codeRepeat = products.find((p) => p.code === product.code);
+
+      if (
+        !product.title ||
+        !product.description ||
+        !product.price ||
+        !product.thumbnail ||
+        !product.code ||
+        !product.stock
+      ) {
+        console.log("Faltan campos");
         return;
       }
-
+      if (codeRepeat) {
+        console.log("El código ya existe");
+        return;
+      }
       let id;
-      if (!product.length) {
+      if (!products.length) {
         id = 1;
       } else {
-        id = product[product.length - 1].id + 1;
+        id = products[products.length - 1].id + 1;
       }
 
-      product.push({ id, ...obj });
-      await fs.promises.writeFile(this.path, JSON.stringify(product));
+      products.push({ id, ...product });
+
+      await fs.promises.writeFile(
+        this.path,
+        JSON.stringify(products, null, "\t")
+      );
     } catch (error) {
       return error;
     }
@@ -46,27 +60,23 @@ class ProductManager {
 
   async getProductById(idProd) {
     try {
-      const prods = await this.getProducts();
+      const prods = await this.getProducts({});
       const prod = prods.find((p) => p.id === idProd);
-      if (prod) {
-        return prod;
-      } else {
-        return " Not Found";
-      }
+      return prod;
     } catch (error) {
-      return Error;
+      return error;
     }
   }
   async updateProduct(idProd, obj) {
     try {
-      const prods = await this.getProducts();
+      const prods = await this.getProducts({});
       const modifProd = prods.findIndex((p) => p.id === idProd);
       if (modifProd === -1) {
         return -1;
       }
       const prod = prods[modifProd];
       prods[modifProd] = { ...prod, ...obj };
-      await fs.promises.writeFile(this.path, JSON.stringify(prods));
+      await promises.writeFile(this.path, JSON.stringify(prods));
       return 1;
     } catch (error) {
       return error;
@@ -75,14 +85,14 @@ class ProductManager {
 
   async deleteProduct(idProd) {
     try {
-      const prods = await this.getProducts();
+      const prods = await this.getProducts({});
       const deletedProd = prods.find((p) => p.id === idProd);
       if (!deletedProd) {
         return -1;
       }
       const product = prods.filter((p) => p.id !== idProd);
 
-      await fs.promises.writeFile(this.path, JSON.stringify(product));
+      await promises.writeFile(this.path, JSON.stringify(product));
       return 1;
     } catch (error) {
       return error;
@@ -131,11 +141,20 @@ const product5 = {
   code: "1988",
   stock: "15",
 };
+
 async function test() {
   const manager = new ProductManager("products.json");
 
-  await manager.addProduct(product5);
-  // const prods = await manager.getProducts();
-  //  console.log(prods);
+  await manager.addProduct(product1);
+
+  await manager.addProduct(product2);
+  await manager.addProduct(product3);
+  // await manager.addProduct(product4);
+  // await manager.addProduct(product5);
+  //  const getid = await manager.getProductById(3);
+  // console.log(getid);
+  //   const prods = await manager.getProducts();
+  //   console.log(prods);
 }
 test();
+//export default new ProductManager("products.json");
